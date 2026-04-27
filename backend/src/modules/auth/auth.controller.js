@@ -10,6 +10,13 @@ const register = async (req, res) => {
   );
 };
 
+const accessCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 15 * 60 * 1000, // matches typical access token TTL; refresh re-issues
+};
+
 const login = async (req, res) => {
   const { user, accessToken, refreshToken } = await authService.login(req.body);
 
@@ -21,18 +28,26 @@ const login = async (req, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
+  res.cookie("accessToken", accessToken, accessCookieOptions);
+
   ApiResponse.ok(res, "Login successful", { user, accessToken });
 };
 
 const refreshToken = async (req, res) => {
   const token = req.cookies?.refreshToken;
   const { accessToken } = await authService.refresh(token);
+  res.cookie("accessToken", accessToken, accessCookieOptions);
   ApiResponse.ok(res, "Token refreshed", { accessToken });
 };
 
 const logout = async (req, res) => {
   await authService.logout(req.user.id);
   res.clearCookie("refreshToken");
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
   ApiResponse.ok(res, "Logged out successfully");
 };
 

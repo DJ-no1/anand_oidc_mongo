@@ -2,13 +2,19 @@ import ApiError from "../../common/utils/api-error.js";
 import { verifyAccessToken } from "../../common/utils/jwt.utils.js";
 import User from "./auth.model.js";
 
-// Authenticates using the short-lived access token (header or cookie)
-const authenticate = async (req, res, next) => {
-  let token;
-
+const readAccessToken = (req) => {
   if (req.headers.authorization?.startsWith("Bearer")) {
-    token = req.headers.authorization.split(" ")[1];
+    return req.headers.authorization.split(" ")[1];
   }
+  if (req.cookies?.accessToken) {
+    return req.cookies.accessToken;
+  }
+  return null;
+};
+
+// Authenticates using the short-lived access token (Authorization or httpOnly cookie)
+const authenticate = async (req, res, next) => {
+  const token = readAccessToken(req);
 
   if (!token) throw ApiError.unauthorized("Not authenticated");
 
@@ -25,6 +31,29 @@ const authenticate = async (req, res, next) => {
   next();
 };
 
+/**
+ * Like authenticate but does not throw; attaches req.user when a valid token is present.
+ */
+const tryAttachUser = async (req, res, next) => {
+  const token = readAccessToken(req);
+  if (!token) return next();
+  try {
+    const decoded = verifyAccessToken(token);
+    const user = await User.findById(decoded.id);
+    if (user) {
+      req.user = {
+        id: user._id,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+      };
+    }
+  } catch {
+    // invalid or expired — treat as anonymous
+  }
+  next();
+};
+
 // Higher-order function — returns middleware configured with allowed roles
 const authorize = (...roles) => {
   return (req, res, next) => {
@@ -37,4 +66,4 @@ const authorize = (...roles) => {
   };
 };
 
-export { authenticate, authorize };
+export { authenticate, authorize, tryAttachUser };

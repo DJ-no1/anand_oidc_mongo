@@ -3,3 +3,8 @@
 .env.*
 !.env.example
 backend/.env
+# OIDC signing key — never commit (public-key.pub is optional to commit)
+backend/cert/private-key.pem
+node_modules
+package-lock.json
+pnpm-lock.yaml

@@ -1,0 +1,10 @@
+---
+description: Use pnpm for all package installs and script runs in this repo
+alwaysApply: true
+---
+
+# Package manager
+
+- Use **pnpm** for dependency management, not `npm` or `yarn`.
+- Install packages with `pnpm add` / `pnpm add -D`; run scripts with `pnpm run <script>` or `pnpm <script>` when defined.
+- Do not document or suggest `npm install` / `npx` for this project unless a third-party tool explicitly requires it; prefer `pnpm dlx` over `npx` when appropriate.
