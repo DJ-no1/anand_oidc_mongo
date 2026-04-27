@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import mongoose from "mongoose";
 import ApiError from "./common/utils/api-error.js";
 import authRoute from "./modules/auth/auth.routes.js";
 import oauthClientRoutes from "./modules/oauth-client/oauth-client.routes.js";
@@ -20,6 +21,15 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+app.get("/health", (_req, res) => {
+  const dbOk = mongoose.connection.readyState === 1;
+  res.status(200).json({
+    status: "ok",
+    database: dbOk ? "connected" : "disconnected",
+    uptimeSeconds: Math.round(process.uptime()),
+  });
+});
 
 app.get("/.well-known/openid-configuration", getOpenIdConfiguration);
 

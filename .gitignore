@@ -8,3 +8,5 @@ backend/cert/private-key.pem
 node_modules
 package-lock.json
 pnpm-lock.yaml
+.cursor
+.cursor*
