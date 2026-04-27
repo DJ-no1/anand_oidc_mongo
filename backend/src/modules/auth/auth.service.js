@@ -16,12 +16,23 @@ import {
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
+const PRIVILEGED_ROLES = ["admin", "support"];
+
 const register = async ({ name, email, password, role, termsAccepted, country }) => {
   const existing = await User.findOne({ email });
   if (existing) throw ApiError.conflict("Email already registered");
 
   if (!termsAccepted) {
     throw ApiError.badRequest("You must accept the terms to register");
+  }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    PRIVILEGED_ROLES.includes(String(role || "").toLowerCase())
+  ) {
+    throw ApiError.badRequest(
+      "Self-registration cannot use admin or support roles. Use an operator script to grant those roles.",
+    );
   }
 
   const { rawToken, hashedToken } = generateResetToken();

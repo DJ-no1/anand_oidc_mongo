@@ -48,6 +48,7 @@ export function middleware(request: NextRequest) {
   if (!hasUiSession) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
     const returnTo = `${pathname}${search || ""}`;
     if (returnTo !== "/login") {
       url.searchParams.set("return_to", returnTo);
@@ -59,5 +60,9 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image).*)"],
+  matcher: [
+    // Console: require UI session (oidc_ui_session); explicit so /projects/* stays covered if the catch-all changes.
+    "/projects/:path*",
+    "/((?!api|_next/static|_next/image).*)",
+  ],
 };

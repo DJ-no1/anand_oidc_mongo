@@ -37,3 +37,65 @@ export type OAuthClientRow = {
   createdAt?: string;
   projectId?: string;
 };
+
+/** Standard API JSON envelope from the Express backend. */
+export type ApiJson<T> = {
+  success?: boolean;
+  message?: string;
+  data?: T;
+};
+
+export type AdminStats = {
+  totalUsers: number;
+  totalOAuthClients: number;
+  authCodesIssuedToday: number;
+  activeAccessTokensApprox: number;
+};
+
+export type AdminClientOwner = { _id?: string; email?: string; name?: string };
+export type AdminClientProject = { _id?: string; name?: string; isDefault?: boolean };
+
+export type AdminOAuthClientRow = {
+  clientId: string;
+  clientName: string;
+  redirectUris: string[];
+  description?: string;
+  suspended?: boolean;
+  suspendedReason?: string;
+  suspendedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  ownerId?: AdminClientOwner | null;
+  projectId?: AdminClientProject | null;
+};
+
+export type AdminUserRow = {
+  _id: string;
+  email: string;
+  name?: string;
+  role?: string;
+  isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type AdminUsersPageResponse = {
+  items: AdminUserRow[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type AdminAuthorizedApp = {
+  clientId: string;
+  scope?: string;
+  grantedAt?: string;
+  clientName?: string | null;
+  clientSuspended?: boolean;
+};
+
+export type AdminAuthorizedAppsResponse = {
+  userId: string;
+  email: string;
+  apps: AdminAuthorizedApp[];
+};

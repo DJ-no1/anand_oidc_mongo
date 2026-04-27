@@ -11,7 +11,8 @@
     "dev": "nodemon server.js",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "oidc:generate-keys": "bash scripts/generate-oidc-keys.sh"
+    "oidc:generate-keys": "bash scripts/generate-oidc-keys.sh",
+    "promote:admin": "node scripts/promote-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

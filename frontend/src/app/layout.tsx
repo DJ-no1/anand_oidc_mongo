@@ -32,7 +32,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <TooltipProvider delayDuration={200}>
+        <TooltipProvider delay={200}>
           <div className="flex flex-1 flex-col">{children}</div>
           <Toaster richColors theme="dark" />
         </TooltipProvider>
