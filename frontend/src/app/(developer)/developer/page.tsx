@@ -4,7 +4,7 @@ export default function DeveloperHomePage() {
   return (
     <main className="mx-auto flex min-h-full max-w-3xl flex-col gap-6 px-6 py-16">
       <h1 className="text-xl font-semibold tracking-tight">Developer dashboard</h1>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-muted-foreground">
         Placeholder. Lists OAuth clients you own.
       </p>
       <Link

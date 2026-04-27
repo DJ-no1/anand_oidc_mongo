@@ -1,6 +1,7 @@
 ## Learned User Preferences
 
 - Use pnpm for installs and scripts in this workspace, not npm or yarn; see `.cursor/rules/package-manager-pnpm.mdc`.
+- Frontend UI uses **shadcn/ui** (`frontend/components.json`, `frontend/src/components/ui/`). Prefer adding components with `pnpm dlx shadcn@latest add` from `frontend/`; use the **shadcn** MCP in Cursor for registry search and `get_add_command_for_items`. Follow the **shadcn** agent skill in `.agents/skills/shadcn` when building or changing UI (install/update with `pnpm dlx skills add shadcn/ui -y`). See `.cursor/rules/frontend-shadcn-ui.mdc`.
 
 ## Learned Workspace Facts
 
