@@ -242,7 +242,7 @@ export default function AdminUsersPage() {
                     {u.name ?? "—"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{u.role ?? "customer"}</Badge>
+                    <Badge variant="secondary">{u.role ?? "user"}</Badge>
                   </TableCell>
                   <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
                     {formatTs(u.createdAt)}

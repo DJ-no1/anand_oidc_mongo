@@ -3,11 +3,8 @@ import ApiError from "../../common/utils/api-error.js";
 import { getOidcIssuer, signIdToken } from "../../common/utils/keys.utils.js";
 import { hashToken, randomBase64Url, verifyPkce } from "../../common/utils/crypto.utils.js";
 import * as clientService from "../oauth-client/oauth-client.service.js";
-import AuthCode from "./auth-code.model.js";
 import Consent from "./consent.model.js";
-import OAuthAccessToken from "./oauth-access-token.model.js";
-import AuthorizationRequest from "./authorization-request.model.js";
-import OAuthAudit from "./oauth-audit.model.js";
+import redis from "../../common/config/redis.js";
 
 const ACCESS_TOKEN_SECONDS = 900;
 
@@ -72,15 +69,7 @@ const assertRedirect = (client, redirectUri) => {
 };
 
 const logAuthCodeIssued = async (userId, clientId) => {
-  try {
-    await OAuthAudit.create({
-      event: "auth_code_issued",
-      clientId,
-      userId,
-    });
-  } catch (e) {
-    console.error("[OAuthAudit] auth_code_issued failed", e.message);
-  }
+  // console.log(`[OAuthAudit] auth_code_issued for user=${userId} client=${clientId}`);
 };
 
 export const getAuthorize = async (req) => {
@@ -116,7 +105,7 @@ export const getAuthorize = async (req) => {
 
   if (!existing) {
     const transactionId = `txn_${randomBase64Url(24).replace(/[^a-zA-Z0-9_-]/g, "")}`;
-    await AuthorizationRequest.create({
+    const reqData = {
       transactionId,
       userId: req.user.id,
       clientId: params.clientId,
@@ -126,8 +115,8 @@ export const getAuthorize = async (req) => {
       codeChallengeMethod: params.codeChallengeMethod,
       scope: params.scope,
       nonce: params.nonce,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-    });
+    };
+    await redis.set(`auth_req:${transactionId}:${req.user.id}`, JSON.stringify(reqData), "EX", 15 * 60);
     return { type: "consent_redirect", transactionId };
   }
 
@@ -137,7 +126,7 @@ export const getAuthorize = async (req) => {
 const issueAuthCode = async (userId, params) => {
   const raw = randomBase64Url(32);
   const codeHash = hashToken(raw);
-  await AuthCode.create({
+  const codeData = {
     codeHash,
     userId,
     clientId: params.clientId,
@@ -146,8 +135,8 @@ const issueAuthCode = async (userId, params) => {
     codeChallengeMethod: params.codeChallengeMethod,
     scope: params.scope,
     nonce: params.nonce,
-    expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-  });
+  };
+  await redis.set(`auth_code:${codeHash}`, JSON.stringify(codeData), "EX", 5 * 60);
   await logAuthCodeIssued(userId, params.clientId);
   return raw;
 };
@@ -253,13 +242,13 @@ export const exchangeToken = async (req, res) => {
   }
 
   const codeHash = hashToken(String(codeRaw).trim());
-  const rec = await AuthCode.findOne({ codeHash, used: false, clientId: client.clientId });
-  if (!rec) {
+  const recJson = await redis.get(`auth_code:${codeHash}`);
+  if (!recJson) {
     return res.status(400).json({ error: "invalid_grant", error_description: "Invalid or expired code" });
   }
-  if (rec.expiresAt < new Date()) {
-    await AuthCode.deleteOne({ _id: rec._id });
-    return res.status(400).json({ error: "invalid_grant", error_description: "Code expired" });
+  const rec = JSON.parse(recJson);
+  if (rec.clientId !== client.clientId) {
+    return res.status(400).json({ error: "invalid_grant", error_description: "Invalid or expired code" });
   }
   if (rec.redirectUri !== redirectUri) {
     return res.status(400).json({ error: "invalid_grant", error_description: "redirect_uri mismatch" });
@@ -269,7 +258,7 @@ export const exchangeToken = async (req, res) => {
     return res.status(400).json({ error: "invalid_grant", error_description: "PKCE verification failed" });
   }
 
-  await AuthCode.deleteOne({ _id: rec._id });
+  await redis.del(`auth_code:${codeHash}`);
 
   const user = await User.findById(rec.userId);
   if (!user) {
@@ -278,14 +267,13 @@ export const exchangeToken = async (req, res) => {
 
   const opaq = randomBase64Url(32);
   const tokenHash = hashToken(opaq);
-  const exp = new Date(Date.now() + ACCESS_TOKEN_SECONDS * 1000);
-  await OAuthAccessToken.create({
+  const tokenData = {
     tokenHash,
-    userId: user._id,
+    userId: user._id.toString(),
     clientId: client.clientId,
     scope: rec.scope,
-    expiresAt: exp,
-  });
+  };
+  await redis.set(`access_token:${tokenHash}`, JSON.stringify(tokenData), "EX", ACCESS_TOKEN_SECONDS);
 
   const now = Math.floor(Date.now() / 1000);
   const idClaims = {
@@ -341,13 +329,11 @@ export const loadConsentContext = async (userId, transactionId) => {
   if (!transactionId || typeof transactionId !== "string") {
     throw ApiError.badRequest("transaction_id is required");
   }
-  const ar = await AuthorizationRequest.findOne({
-    transactionId: String(transactionId).trim(),
-    userId,
-  });
-  if (!ar || ar.expiresAt < new Date()) {
+  const arJson = await redis.get(`auth_req:${String(transactionId).trim()}:${userId}`);
+  if (!arJson) {
     throw ApiError.badRequest("Invalid or expired transaction");
   }
+  const ar = JSON.parse(arJson);
   const client = await clientService.findByClientId(ar.clientId);
   if (!client) {
     throw ApiError.badRequest("Client not found");
@@ -371,18 +357,19 @@ export const completeConsent = async (userId, transactionId, decision) => {
     throw ApiError.badRequest("decision must be allow or deny");
   }
 
-  const ar = await AuthorizationRequest.findOne({ transactionId: tid, userId });
-  if (!ar || ar.expiresAt < new Date()) {
+  const arJson = await redis.get(`auth_req:${tid}:${userId}`);
+  if (!arJson) {
     throw ApiError.badRequest("Invalid or expired transaction");
   }
+  const ar = JSON.parse(arJson);
 
   const client = await clientService.findByClientId(ar.clientId);
   if (!client) {
-    await AuthorizationRequest.deleteOne({ _id: ar._id });
+    await redis.del(`auth_req:${tid}:${userId}`);
     throw ApiError.badRequest("Client not found");
   }
   if (client.suspended) {
-    await AuthorizationRequest.deleteOne({ _id: ar._id });
+    await redis.del(`auth_req:${tid}:${userId}`);
     const redirect_url = buildRedirectUrl(ar.redirectUri, {
       error: "access_denied",
       error_description: "This application has been suspended",
@@ -401,7 +388,7 @@ export const completeConsent = async (userId, transactionId, decision) => {
     nonce: ar.nonce,
   };
 
-  await AuthorizationRequest.deleteOne({ _id: ar._id });
+  await redis.del(`auth_req:${tid}:${userId}`);
 
   if (d === "deny") {
     const redirect_url = buildRedirectUrl(ar.redirectUri, {

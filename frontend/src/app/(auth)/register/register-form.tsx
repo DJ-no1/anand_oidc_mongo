@@ -134,7 +134,7 @@ export function RegisterForm() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
-        role: "customer",
+        role: "user",
         termsAccepted: true,
       };
       if (country.trim().length === 2) {

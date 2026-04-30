@@ -1,6 +1,7 @@
 import ApiError from "../../common/utils/api-error.js";
 import { verifyAccessToken } from "../../common/utils/jwt.utils.js";
 import User from "./auth.model.js";
+import redis from "../../common/config/redis.js";
 
 const readAccessToken = (req) => {
   if (req.headers.authorization?.startsWith("Bearer")) {
@@ -14,13 +15,37 @@ const readAccessToken = (req) => {
 
 // Authenticates using the short-lived access token (Authorization or httpOnly cookie)
 const authenticate = async (req, res, next) => {
+  const clearAuth = () => {
+    res.clearCookie("accessToken", { path: "/" });
+    res.clearCookie("refreshToken", { path: "/" });
+  };
+
   const token = readAccessToken(req);
+  if (!token) {
+    clearAuth();
+    throw ApiError.unauthorized("Not authenticated");
+  }
 
-  if (!token) throw ApiError.unauthorized("Not authenticated");
+  let decoded;
+  try {
+    decoded = verifyAccessToken(token);
+  } catch (err) {
+    clearAuth();
+    throw ApiError.unauthorized("Session expired or invalid");
+  }
 
-  const decoded = verifyAccessToken(token);
+  // Check Redis Whitelist
+  const isWhitelisted = await redis.get(`session:${decoded.id}`);
+  if (!isWhitelisted) {
+    clearAuth();
+    throw ApiError.unauthorized("Session expired or revoked");
+  }
+
   const user = await User.findById(decoded.id);
-  if (!user) throw ApiError.unauthorized("User no longer exists");
+  if (!user) {
+    clearAuth();
+    throw ApiError.unauthorized("User no longer exists");
+  }
 
   req.user = {
     id: user._id,
@@ -39,14 +64,17 @@ const tryAttachUser = async (req, res, next) => {
   if (!token) return next();
   try {
     const decoded = verifyAccessToken(token);
-    const user = await User.findById(decoded.id);
-    if (user) {
+    const isWhitelisted = await redis.get(`session:${decoded.id}`);
+    if (isWhitelisted) {
+      const user = await User.findById(decoded.id);
+      if (user) {
       req.user = {
         id: user._id,
         role: user.role,
         name: user.name,
         email: user.email,
       };
+      }
     }
   } catch {
     // invalid or expired — treat as anonymous

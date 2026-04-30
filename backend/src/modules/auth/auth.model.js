@@ -25,8 +25,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["customer", "seller", "admin", "support"],
-      default: "customer",
+      enum: ["user", "admin", "superadmin"],
+      default: "user",
     },
     isVerified: {
       type: Boolean,
@@ -37,6 +37,29 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: 2,
+      default: "",
+    },
+    profilePictureUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
+    jobTitle: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+      default: "",
+    },
+    company: {
+      type: String,
+      trim: true,
+      maxlength: 100,
       default: "",
     },
     verificationToken: { type: String, select: false },

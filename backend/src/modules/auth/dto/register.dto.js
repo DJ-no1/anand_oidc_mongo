@@ -7,8 +7,8 @@ const allowPrivilegedSelfRegister =
   process.env.ALLOW_REGISTER_ADMIN_ROLES === "true";
 
 const REGISTER_ROLES = allowPrivilegedSelfRegister
-  ? ["customer", "seller", "admin", "support"]
-  : ["customer", "seller"];
+  ? ["user", "admin", "superadmin"]
+  : ["user"];
 
 class RegisterDto extends BaseDto {
   static schema = Joi.object({
@@ -23,9 +23,9 @@ class RegisterDto extends BaseDto {
       .required(),
     role: Joi.string()
       .valid(...REGISTER_ROLES)
-      .default("customer")
+      .default("user")
       .messages({
-        "any.only": `role must be one of: ${REGISTER_ROLES.join(", ")}. In production, only customer/seller are allowed; grant admin with backend script promote:admin.`,
+        "any.only": `role must be one of: ${REGISTER_ROLES.join(", ")}. In production, only user is allowed; grant admin with backend script promote:admin.`,
       }),
     termsAccepted: Joi.boolean().valid(true).required(),
     country: Joi.string().trim().length(2).uppercase().allow("").optional(),

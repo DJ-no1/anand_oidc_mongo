@@ -4,8 +4,8 @@ import connectDB from "./src/common/config/db.js"
 import { initOidcKeys } from "./src/common/utils/keys.utils.js"
 import { backfillDefaultProjects } from "./src/modules/project/project.service.js"
 
-const PORT = process.env.PORT || 5000
-const RETRY_DELAY_MS = Number(process.env.STARTUP_RETRY_DELAY_MS || 5000)
+const PORT = process.env.PORT || 4000
+const RETRY_DELAY_MS = Number(process.env.STARTUP_RETRY_DELAY_MS || 4000)
 
 const start = async () => {
     await connectDB()

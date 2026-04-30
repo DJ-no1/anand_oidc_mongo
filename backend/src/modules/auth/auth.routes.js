@@ -25,5 +25,6 @@ router.put(
   controller.resetPassword,
 );
 router.get("/me", authenticate, controller.getMe);
+router.put("/me", authenticate, controller.updateProfile);
 
 export default router;

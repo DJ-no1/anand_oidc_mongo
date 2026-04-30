@@ -71,6 +71,11 @@ const getMe = async (req, res) => {
   ApiResponse.ok(res, "User profile", user);
 };
 
+const updateProfile = async (req, res) => {
+  const user = await authService.updateProfile(req.user.id, req.body);
+  ApiResponse.ok(res, "Profile updated successfully", user);
+};
+
 export {
   register,
   login,
@@ -80,4 +85,5 @@ export {
   forgotPassword,
   resetPassword,
   getMe,
+  updateProfile,
 };

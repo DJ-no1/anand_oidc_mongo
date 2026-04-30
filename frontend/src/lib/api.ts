@@ -16,6 +16,19 @@ export function clearUiSessionCookieValue(): string {
   return `${UI_SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
+export type UserProfile = {
+  _id: string;
+  email: string;
+  name: string;
+  role: string;
+  isVerified: boolean;
+  profilePictureUrl?: string;
+  bio?: string;
+  jobTitle?: string;
+  company?: string;
+  country?: string;
+};
+
 export type ProjectRow = {
   _id: string;
   name: string;

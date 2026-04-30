@@ -3,8 +3,8 @@ import ApiError from "../../common/utils/api-error.js";
 import User from "../auth/auth.model.js";
 import OAuthClient from "../oauth-client/oauth-client.model.js";
 import Consent from "../oauth/consent.model.js";
-import OAuthAccessToken from "../oauth/oauth-access-token.model.js";
-import OAuthAudit from "../oauth/oauth-audit.model.js";
+// import OAuthAccessToken from "../oauth/oauth-access-token.model.js";
+// import OAuthAudit from "../oauth/oauth-audit.model.js";
 
 const startOfUtcDay = () => {
   const d = new Date();
@@ -20,17 +20,17 @@ const assertObjectId = (id, label = "id") => {
 
 const getStats = async () => {
   const since = startOfUtcDay();
-  const [totalUsers, totalClients, authCodesIssuedToday, activeAccessTokens] = await Promise.all([
+  const [totalUsers, totalClients] = await Promise.all([
     User.countDocuments(),
     OAuthClient.countDocuments(),
-    OAuthAudit.countDocuments({ event: "auth_code_issued", createdAt: { $gte: since } }),
-    OAuthAccessToken.countDocuments({ expiresAt: { $gt: new Date() } }),
+    // OAuthAudit.countDocuments({ event: "auth_code_issued", createdAt: { $gte: since } }),
+    // OAuthAccessToken.countDocuments({ expiresAt: { $gt: new Date() } }),
   ]);
   return {
     totalUsers,
     totalOAuthClients: totalClients,
-    authCodesIssuedToday,
-    activeAccessTokensApprox: activeAccessTokens,
+    authCodesIssuedToday: 0, // Placeholder
+    activeAccessTokensApprox: 0, // Placeholder
   };
 };
 
@@ -112,7 +112,7 @@ const revokeUserConsent = async (userId, clientId) => {
   const uid = new mongoose.Types.ObjectId(userId);
   const cid = String(clientId);
   await Consent.deleteOne({ userId: uid, clientId: cid });
-  await OAuthAccessToken.deleteMany({ userId: uid, clientId: cid });
+  // await OAuthAccessToken.deleteMany({ userId: uid, clientId: cid });
   return { revoked: true, userId, clientId: cid };
 };
 

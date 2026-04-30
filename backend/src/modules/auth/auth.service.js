@@ -11,12 +11,13 @@ import {
   sendVerificationEmail,
   sendResetPasswordEmail,
 } from "../../common/config/email.js";
+import redis from "../../common/config/redis.js";
 
 // Hash refresh token before storing — same approach as reset tokens
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
-const PRIVILEGED_ROLES = ["admin", "support"];
+const PRIVILEGED_ROLES = ["admin", "superadmin"];
 
 const register = async ({ name, email, password, role, termsAccepted, country }) => {
   const existing = await User.findOne({ email });
@@ -79,6 +80,9 @@ const login = async ({ email, password }) => {
   user.refreshToken = hashToken(refreshToken);
   await user.save({ validateBeforeSave: false });
 
+  // Add to Redis whitelist (expires in 24 hours)
+  await redis.set(`session:${user._id}`, "1", "EX", 86400);
+
   const userObj = user.toObject();
   delete userObj.password;
   delete userObj.refreshToken;
@@ -108,6 +112,8 @@ const refresh = async (token) => {
 const logout = async (userId) => {
   // Clear stored refresh token so it can't be reused
   await User.findByIdAndUpdate(userId, { refreshToken: null });
+  // Remove from Redis whitelist
+  await redis.del(`session:${userId}`);
 };
 
 const verifyEmail = async (token) => {
@@ -177,6 +183,28 @@ const getMe = async (userId) => {
   return user;
 };
 
+const updateProfile = async (userId, data) => {
+  const allowedFields = ["name", "profilePictureUrl", "bio", "jobTitle", "company", "country"];
+  const updates = {};
+  for (const field of allowedFields) {
+    if (data[field] !== undefined) {
+      updates[field] = data[field];
+    }
+  }
+
+  const user = await User.findByIdAndUpdate(userId, updates, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!user) throw ApiError.notFound("User not found");
+
+  const userObj = user.toObject();
+  delete userObj.password;
+  delete userObj.refreshToken;
+  return userObj;
+};
+
 export {
   register,
   login,
@@ -186,4 +214,5 @@ export {
   forgotPassword,
   resetPassword,
   getMe,
+  updateProfile,
 };

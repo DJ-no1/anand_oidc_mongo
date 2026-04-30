@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const nav = [
   { href: "/projects", label: "All projects" },
   { href: "/projects/new", label: "New project" },
+  { href: "/settings", label: "Profile Settings" },
 ] as const;
 
 export default async function ProjectsConsoleLayout({
