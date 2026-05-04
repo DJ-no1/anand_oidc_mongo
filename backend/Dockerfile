@@ -26,17 +26,18 @@ RUN apk add --no-cache dumb-init
 
 WORKDIR /app
 
-# Copy from builder
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/cert ./cert
-COPY --from=builder /app/server.js .
-COPY package.json .
-
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
-RUN chown -R nodejs:nodejs /app \
+
+# Copy from builder
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/src ./src
+COPY --from=builder --chown=nodejs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nodejs:nodejs /app/cert ./cert
+COPY --from=builder --chown=nodejs:nodejs /app/server.js .
+COPY --chown=nodejs:nodejs package.json .
+
+RUN chmod 700 /app/cert \
     && chmod 600 /app/cert/private-key.pem \
     && chmod 644 /app/cert/public-key.pub
 USER nodejs
