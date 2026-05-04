@@ -1,85 +1,102 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const smtpPort = Number(process.env.SMTP_PORT) || 587;
-const smtpSecure =
-  process.env.SMTP_SECURE === "true" || (process.env.SMTP_SECURE !== "false" && smtpPort === 465);
+let resend;
 
-// SMTP transporter - works with Resend, Mailtrap, Gmail, SendGrid, or any SMTP provider.
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: smtpPort,
-  secure: smtpSecure,
-  connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS) || 10_000,
-  greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS) || 10_000,
-  socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS) || 15_000,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const getApiKey = () => process.env.RESEND_API_KEY || process.env.SMTP_PASS;
 
 const requireEmailConfig = () => {
-  const missing = [
-    "SMTP_HOST",
-    "SMTP_USER",
-    "SMTP_PASS",
-    "SMTP_FROM_EMAIL",
-    "CLIENT_URL",
-  ].filter((key) => !process.env[key]);
+  const missing = [];
+
+  if (!getApiKey()) missing.push("RESEND_API_KEY");
+  if (!process.env.RESEND_FROM_EMAIL && !process.env.SMTP_FROM_EMAIL) {
+    missing.push("RESEND_FROM_EMAIL");
+  }
+  if (!process.env.CLIENT_URL) missing.push("CLIENT_URL");
 
   if (missing.length > 0) {
     throw new Error(`Email is not configured. Missing: ${missing.join(", ")}`);
   }
 };
 
-const sendEmail = async (to, subject, html) => {
+const getResend = () => {
+  if (!resend) {
+    resend = new Resend(getApiKey());
+  }
+
+  return resend;
+};
+
+const getFromAddress = () => {
+  const email = process.env.RESEND_FROM_EMAIL || process.env.SMTP_FROM_EMAIL;
+  const name = process.env.RESEND_FROM_NAME || process.env.SMTP_FROM_NAME;
+  return name ? `${name} <${email}>` : email;
+};
+
+const getClientUrl = () => process.env.CLIENT_URL.replace(/\/$/, "");
+
+const sendEmail = async ({ to, subject, html, text }) => {
   requireEmailConfig();
 
-  const info = await transporter.sendMail({
-    from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
-    to,
+  const { data, error } = await getResend().emails.send({
+    from: getFromAddress(),
+    to: [to],
     subject,
     html,
+    text,
   });
 
-  console.info("Email accepted by SMTP provider:", {
-    messageId: info.messageId,
-    accepted: info.accepted,
-    rejected: info.rejected,
+  if (error) {
+    const message = error.message || "Resend email request failed";
+    const err = new Error(message);
+    err.cause = error;
+    throw err;
+  }
+
+  console.info("[Email] Message accepted by Resend:", {
+    id: data?.id,
+    to,
+    subject,
   });
+
+  return data;
 };
 
 const sendVerificationEmail = async (email, token) => {
-  const url = `${process.env.CLIENT_URL}/verify-email/${token}`;
-  await sendEmail(
-    email,
-    "Verify your email",
-    `<h2>Welcome!</h2><p>Click <a href="${url}">here</a> to verify your email.</p>`,
-  );
+  const url = `${getClientUrl()}/verify-email/${token}`;
+
+  await sendEmail({
+    to: email,
+    subject: "Verify your email",
+    html: `<h2>Welcome!</h2><p>Click <a href="${url}">here</a> to verify your email.</p>`,
+    text: `Welcome! Verify your email: ${url}`,
+  });
 };
 
 const sendResetPasswordEmail = async (email, token) => {
-  const url = `${process.env.CLIENT_URL}/reset-password/${token}`;
-  await sendEmail(
-    email,
-    "Reset your password",
-    `<h2>Password Reset</h2><p>Click <a href="${url}">here</a> to reset your password. This link expires in 15 minutes.</p>`,
-  );
+  const url = `${getClientUrl()}/reset-password/${token}`;
+
+  await sendEmail({
+    to: email,
+    subject: "Reset your password",
+    html: `<h2>Password Reset</h2><p>Click <a href="${url}">here</a> to reset your password. This link expires in 15 minutes.</p>`,
+    text: `Reset your password using this link. It expires in 15 minutes: ${url}`,
+  });
 };
 
 const sendOrderConfirmationEmail = async (email, order) => {
   const items = order.items
-    .map((i) => `<li>${i.title} x${i.quantity} — ₹${i.price}</li>`)
+    .map((i) => `<li>${i.title} x${i.quantity} - Rs.${i.price}</li>`)
     .join("");
 
-  await sendEmail(
-    email,
-    `Order Confirmed — ${order.orderNumber}`,
-    `<h2>Order Confirmed!</h2>
+  await sendEmail({
+    to: email,
+    subject: `Order Confirmed - ${order.orderNumber}`,
+    html: `<h2>Order Confirmed!</h2>
      <p>Order: ${order.orderNumber}</p>
      <ul>${items}</ul>
-     <p><strong>Total: ₹${order.totalAmount}</strong></p>`,
-  );
+     <p><strong>Total: Rs.${order.totalAmount}</strong></p>`,
+    text: `Order confirmed: ${order.orderNumber}. Total: Rs.${order.totalAmount}`,
+  });
 };
 
 export {
