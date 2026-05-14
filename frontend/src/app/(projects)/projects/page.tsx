@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import { QuickSetupSheet } from "@/components/quick-setup-sheet";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -23,11 +24,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { getApiBaseUrl, getAuthHeaders, type ProjectRow } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { FolderKanban } from "lucide-react";
+import { FolderKanban, Settings2 } from "lucide-react";
 
 export default function ProjectsListPage() {
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  const [setupProject, setSetupProject] = useState<ProjectRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,26 +128,50 @@ export default function ProjectsListPage() {
         <ul className="flex flex-col gap-3">
           {projects.map((p) => (
             <li key={p._id}>
-              <Link href={`/projects/${p._id}`} className="block no-underline">
-                <Card className="transition-colors hover:border-primary/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{p.name}</CardTitle>
-                    {p.description ? (
-                      <CardDescription className="line-clamp-2">
-                        {p.description}
-                      </CardDescription>
-                    ) : null}
-                  </CardHeader>
-                  <CardContent className="text-xs text-muted-foreground">
-                    {p.isDefault ? "Default · " : null}
-                    {p.supportEmail ? p.supportEmail : "No support email"}
-                  </CardContent>
-                </Card>
-              </Link>
+              <Card className="transition-colors hover:border-primary/30">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/projects/${p._id}`} className="no-underline">
+                        <CardTitle className="text-base hover:underline">{p.name}</CardTitle>
+                      </Link>
+                      {p.description ? (
+                        <CardDescription className="mt-1 line-clamp-2">
+                          {p.description}
+                        </CardDescription>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setSetupProject(p)}
+                      aria-label={`Quick setup for ${p.name}`}
+                    >
+                      <Settings2 className="size-3.5" />
+                      Quick setup
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground">
+                  {p.isDefault ? "Default · " : null}
+                  {p.supportEmail ? p.supportEmail : "No support email"}
+                </CardContent>
+              </Card>
             </li>
           ))}
         </ul>
       )}
+
+      {setupProject ? (
+        <QuickSetupSheet
+          open={!!setupProject}
+          projectId={setupProject._id}
+          projectName={setupProject.name}
+          onClose={() => setSetupProject(null)}
+        />
+      ) : null}
     </main>
   );
 }

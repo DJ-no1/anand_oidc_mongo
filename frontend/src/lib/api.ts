@@ -1,4 +1,5 @@
-/** Cookie on the Next.js origin so middleware can detect a recent sign-in (API auth cookies live on the API host). */
+
+  /** Cookie on the Next.js origin so middleware can detect a recent sign-in (API auth cookies live on the API host). */
 export const UI_SESSION_COOKIE = "oidc_ui_session";
 export const ACCESS_TOKEN_STORAGE_KEY = "oidc_access_token";
 
