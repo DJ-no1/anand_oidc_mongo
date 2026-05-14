@@ -77,7 +77,6 @@ export default function AdminUsersPage() {
     setListLoading(true);
     setListError(null);
     try {
-<<<<<<< HEAD
       const qs = new URLSearchParams({
         page: String(page),
         limit: String(PAGE_SIZE),
@@ -85,10 +84,6 @@ export default function AdminUsersPage() {
       const res = await fetch(`${api}/api/admin/users?${qs}`, {
         credentials: "include",
         headers: getAuthHeaders(),
-=======
-      const qs = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-      const res = await clientFetch("/api/admin/users?${qs}", {
->>>>>>> 97b179f2908678af57f391f3e8dbd92e0518f6ed
       });
       const json = (await res.json()) as ApiJson<AdminUsersPageResponse>;
       if (!res.ok || json.success === false) {
@@ -115,7 +110,6 @@ export default function AdminUsersPage() {
       setAppsError(null);
       setAppsPayload(null);
       try {
-<<<<<<< HEAD
         const res = await fetch(
           `${api}/api/admin/users/${userId}/authorized-apps`,
           {
@@ -123,10 +117,6 @@ export default function AdminUsersPage() {
             headers: getAuthHeaders(),
           },
         );
-=======
-        const res = await clientFetch("/api/admin/users/${userId}/authorized-apps", {
-        });
->>>>>>> 97b179f2908678af57f391f3e8dbd92e0518f6ed
         const json = (await res.json()) as ApiJson<AdminAuthorizedAppsResponse>;
         if (!res.ok || json.success === false) {
           setAppsError(json.message ?? "Could not load authorized apps.");
