@@ -87,7 +87,8 @@ export function QuickSetupSheet({ open, projectName, onClose }: Props) {
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedLlm, setCopiedLlm] = useState(false);
 
-  const issuer = getApiBaseUrl();
+  const api = getApiBaseUrl();
+  const issuer = typeof window !== "undefined" ? window.location.origin : api;
 
   const rows: (ConfigRow & { key: string; section?: string })[] = [
     {
